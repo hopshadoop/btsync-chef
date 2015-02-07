@@ -1,0 +1,66 @@
+{
+    "device_name": "<%= "python #{node[:btsync][:device_name]}" %>",
+    "listening_port" : <%= node[:btsync][:python][:port] %>,                       // 0 - randomize port
+
+    /* storage_path dir contains auxilliary app files
+       if no storage_path field: .sync dir created in the directory 
+       where binary is located.
+       otherwise user-defined directory will be used 
+    */
+    "storage_path" : "<%= "/home/#{node[:btsync][:user]}/.btsync" %>",
+
+    // uncomment next line if you want to set location of pid file
+    "pid_file" : "<%= "/home/#{node[:btsync][:user]}/.btsync/btsync-python.pid" %>",
+    "check_for_updates" : false, 
+    "use_upnp" : false,                              // use UPnP for port mapping
+
+
+    /* limits in kB/s
+       0 - no limit
+    */
+    "download_limit" : 0,                       
+    "upload_limit" : 0, 
+
+    /* remove "listen" field to disable WebUI
+       remove "login" and "password" fields to disable credentials check
+    */
+    "webui" :
+    {
+	//    disabled
+    }
+    ,
+<%
+   file = File.open("#{Chef::Config[:file_cache_path]}/.master_secret", "r")
+   @bt_secret = file.readline
+# Need to remov the trailing newline in the secret's file.
+   @bt_secret.slice! "\n"
+   file.close
+   File.delete("#{Chef::Config[:file_cache_path]}/.master_secret")
+-%>
+    "shared_folders" :
+    [
+	{
+	    //  use --generate-secret in command line to create -new secret
+	    "secret" : "<%= @bt_secret %>",                   // * required field
+	    "dir" : "<%= node[:btsync][:python][:shared_folder] %>", // * required field
+	    //  use relay server when direct connection fails
+	    "use_relay_server" : false,
+	    "use_tracker" : false, 
+	    "use_dht" : false,
+	    "search_lan" : <%= node[:btsync][:search_lan] %>,
+	    //  enable sync trash to store files deleted on remote devices
+	    "use_sync_trash" : false,
+	    //  specify hosts to attempt connection without additional search     
+	    "known_hosts" : [
+		    "<%= node[:btsync][:python][:seeder] %>", "<%= node[:btsync][:python][:leechers].join("\", \"") %>"
+	    ]
+	}
+    ]
+
+    // Advanced preferences can be added to config file here
+    ,
+    "lan_use_tcp" : true,
+    "lan_encrypt_data" : false,
+    "disk_low_priority" : false,
+    "folder_rescan_interval" : 30
+}

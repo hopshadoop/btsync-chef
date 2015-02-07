@@ -1,0 +1,86 @@
+#!/bin/sh
+#
+# description: Starts and stops the btsync Bittorrent sync client
+# #
+# pidfile: /var/run/bysync.pid
+# config: /etc/btsync.conf
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+# Avoid using root's TMPDIR
+unset TMPDIR
+
+# Source networking configuration.
+. /etc/sysconfig/network
+
+# Check that networking is up.
+[ ${NETWORKING} = "no" ] && exit 1
+
+# Check that btsync.conf exists.
+[ -f /etc/btsync.conf ] || exit 6
+
+RETVAL=0
+
+BTSYNCOPTIONS="--config /etc/btsync.conf"
+
+start() {
+KIND="Bittorrentsync"
+echo -n $"Starting $KIND services: "
+daemon btsync "$BTSYNCOPTIONS"
+RETVAL=$?
+echo
+[ $RETVAL -eq 0 ] && touch /var/lock/subsys/btsync || RETVAL=1
+return $RETVAL
+}
+
+stop() {
+echo
+KIND="Bittorrentsync"
+echo -n $"Shutting down $KIND services: "
+killproc btsync
+RETVAL=$?
+[ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/btsync
+echo ""
+return $RETVAL
+}
+
+restart() {
+stop
+start
+}
+
+rhstatus() {
+status btsync
+return $?
+}
+
+# Allow status as non-root.
+if [ "$1" = status ]; then
+rhstatus
+exit $?
+fi
+
+case "$1" in
+start)
+start
+;;
+stop)
+stop
+;;
+restart)
+restart
+;;
+reload)
+reload
+;;
+status)
+rhstatus
+;;
+condrestart)
+[ -f /var/lock/subsys/btsync ] && restart || :
+;;
+*)
+echo $"Usage: $0 {start|stop|restart|reload|status|condrestart}"
+exit 2
+esac

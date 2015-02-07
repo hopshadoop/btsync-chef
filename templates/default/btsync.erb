@@ -1,0 +1,65 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides: btsync
+# Required-Start: $local_fs $remote_fs
+# Required-Stop: $local_fs $remote_fs
+# Should-Start: $network
+# Should-Stop: $network
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
+# Short-Description:  Daemonized version of btsync.
+# Description: Starts the btsync daemon
+### END INIT INFO
+
+# Replace with linux users you want to run BTSync clients for
+btuser=<%= node[:btsync][:user] %>
+DAEMON=<%= "#{node[:btsync][:bin]}/btsync" %>
+
+start() {
+    config=<%= "#{node[:btsync][:etc]}/btsync-" %><%= @recipe_name %>.conf
+    if [ -f $config ]; then
+	echo "Starting BTSync for $btuser"
+	start-stop-daemon -b -o -c $btuser -S -x $DAEMON -u $btuser -- --config $config
+    else
+	echo "Couldn't start BTSync for $btuser (no $config found)"
+    fi
+}
+
+stop() {
+    dbpid=`pgrep -fu $btuser $config`
+    if [ ! -z "$dbpid" ]; then
+	echo "Stopping btsync for $btuser"
+	start-stop-daemon -o -c $btuser -K -u $btuser -x $DAEMON
+    fi
+}
+
+status() {
+    dbpid=`pgrep -fu $btuser $config`
+    if [ -z "$dbpid" ]; then
+	echo "btsync for USER $btuser: not running."
+    else
+	echo "btsync for USER $btuser: running (pid $dbpid)"
+    fi
+}
+
+case "$1" in
+    start)
+	start
+	;;
+    stop)
+	stop
+	;;
+    restart|reload|force-reload)
+	stop
+        sleep 8
+	start
+	;;
+    status)
+	status
+	;;
+    *)
+	echo "Usage: /etc/init.d/btsync-<%= @target %> {start|stop|reload|force-reload|restart|status}"
+	exit 1
+esac
+
+exit 0
